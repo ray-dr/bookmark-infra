@@ -1,0 +1,70 @@
+version: 2.1
+orbs: 
+  aws-cli: circleci/aws-cli@3.1.1
+  terraform: circleci/terraform@3.0.1
+  maven: circleci/maven@1.4.0
+
+jobs:
+  build:
+    docker:
+      - image: cimg/openjdk:11.0.18
+    ###### Image details ######
+    # build-essential 12.9ubuntu3, curl 7.81.0, docker 20.10.22, docker-compose Docker Compose version v2.14.2 v2.14.2, 
+    # dockerize v0.8.0, git 2.39.1, gradle 7.6, java 11.0.18, jq 1.6, maven 3.8.7, ubuntu 22.04.1 LTS, wget 1.21.2
+    steps:
+      - run: echo "Build"
+
+  stage: &setup-env
+    docker:
+      - image: cimg/openjdk:11.0.18
+    working_directory: ~/terraform
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: echo "Stage"
+      - aws-cli/setup:
+           profile-name: default
+      - run: aws --version
+      - run: bash ./scripts/install_terraform.sh
+      - run: bash ./scripts/initplan.sh
+      - run: bash ./scripts/install_dependencies.sh
+      - run: echo "Staged successfully"      
+
+  deploy: &deploy-env
+    docker:
+      - image: cimg/openjdk:11.0.18
+    working_directory: ~/terraform
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: echo "Deploy"
+      - aws-cli/setup:
+           profile-name: default
+      - run: aws --version
+      - run: bash ./scripts/install_terraform.sh
+      - run: bash ./scripts/apply.sh
+      - run: bash ./scripts/install_dependencies.sh
+      - run: echo "Deployed successfully"    
+
+  stage_env:
+    <<: *setup-env
+
+  deploy_env:
+    <<: *deploy-env
+
+  
+
+workflows:
+  build-env:
+    jobs:
+    - build
+    - stage_env:
+        context: ***   
+    - apply approval:
+        type: approval
+        requires:
+        - stage_env
+    - deploy_env:
+        context: ***
+        requires: 
+         - apply approval
