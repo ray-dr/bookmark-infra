@@ -27,7 +27,8 @@ jobs:
       - run: aws --version
       - run: bash ./scripts/install_terraform.sh
       - run: bash ./scripts/initplan.sh
-      - run: bash ./scripts/install_dependencies.sh
+      - run: pwd
+      - run: ls -al
       - run: echo "Staged successfully"      
 
   deploy: &deploy-env
@@ -43,7 +44,12 @@ jobs:
       - run: aws --version
       - run: bash ./scripts/install_terraform.sh
       - run: bash ./scripts/apply.sh
-      - run: bash ./scripts/install_dependencies.sh
+      - run: |
+          ls -al
+          docker build -t bookmark .
+          docker login -u $dockerhub_login -p $dockerhub_pwd
+          docker tag bookmark:latest $dockerhub_login/bookmark:latest
+          docker push $dockerhub_login/bookmark:latest
       - run: echo "Deployed successfully"    
 
   stage_env:
@@ -52,19 +58,17 @@ jobs:
   deploy_env:
     <<: *deploy-env
 
-  
-
 workflows:
   build-env:
     jobs:
     - build
     - stage_env:
-        context: ***   
+        context: odu_aws   
     - apply approval:
         type: approval
         requires:
         - stage_env
     - deploy_env:
-        context: ***
+        context: odu_aws
         requires: 
          - apply approval
