@@ -5,9 +5,10 @@ The repo will be updated frequently as the course progresses.
 ***Infrastructure***
 
 - AWS RDS Mysql database
-- AWS VPC and security groups that allow access for other team members
-- AWS EC2 instance to be used as a server for the app.
+- AWS VPC and security groups
+- AWS Ec2 instance
+- Build and push docker image to docker hub account
+- SSH into Ec2 to pull docker image and run it with http access
 
 ***Troubleshooting/Learning/TODO***
-
-- Deploying a docker image to run the app
+- Script mounting volume to docker container on Ec2

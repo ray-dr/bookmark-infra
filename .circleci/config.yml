@@ -8,13 +8,10 @@ jobs:
   build:
     docker:
       - image: cimg/openjdk:11.0.18
-    ###### Image details ######
-    # build-essential 12.9ubuntu3, curl 7.81.0, docker 20.10.22, docker-compose Docker Compose version v2.14.2 v2.14.2, 
-    # dockerize v0.8.0, git 2.39.1, gradle 7.6, java 11.0.18, jq 1.6, maven 3.8.7, ubuntu 22.04.1 LTS, wget 1.21.2
     steps:
       - run: echo "Build"
 
-  stage: &setup-env
+  stage:
     docker:
       - image: cimg/openjdk:11.0.18
     working_directory: ~/terraform
@@ -27,16 +24,17 @@ jobs:
       - run: aws --version
       - run: bash ./scripts/install_terraform.sh
       - run: bash ./scripts/initplan.sh
-      - run: pwd
-      - run: ls -al
       - run: echo "Staged successfully"      
 
-  deploy: &deploy-env
+  deploy:
     docker:
       - image: cimg/openjdk:11.0.18
     working_directory: ~/terraform
     steps:
       - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "4c:fc:5e:b0:af:84:76:84:72:da:55:ce:ca:56:49:5c"
       - setup_remote_docker
       - run: echo "Deploy"
       - aws-cli/setup:
@@ -44,19 +42,27 @@ jobs:
       - run: aws --version
       - run: bash ./scripts/install_terraform.sh
       - run: bash ./scripts/apply.sh
-      - run: |
-          ls -al
-          docker build -t bookmark .
-          docker login -u $dockerhub_login -p $dockerhub_pwd
-          docker tag bookmark:latest $dockerhub_login/bookmark:latest
-          docker push $dockerhub_login/bookmark:latest
-      - run: echo "Deployed successfully"    
+      - run: bash ./scripts/dockerstage.sh
+      - run: ssh -o StrictHostKeyChecking=no $SSH_USER_NAME@$SSH_HOST_NAME "sudo docker pull $dockerhub_login/bookmark:latest && sudo docker run -d -p 80:8080 $dockerhub_login/bookmark:latest"
+      - run: echo "Deployed successfully"
 
-  stage_env:
-    <<: *setup-env
+  # destroy:
+  #   docker:
+  #     - image: cimg/openjdk:11.0.18
+  #   working_directory: ~/terraform
+  #   steps:
+  #     - checkout
+  #     - add_ssh_keys:
+  #         fingerprints:
+  #           - "4c:fc:5e:b0:af:84:76:84:72:da:55:ce:ca:56:49:5c"
+  #     - setup_remote_docker
+  #     - run: echo "Deploy"
+  #     - aws-cli/setup:
+  #          profile-name: default
+  #     - run: aws --version
+  #     - run: bash ./scripts/install_terraform.sh
+  #     - run: bash ./scripts/apply.sh
 
-  deploy_env:
-    <<: *deploy-env
 
 workflows:
   build-env:
@@ -72,3 +78,5 @@ workflows:
         context: odu_aws
         requires: 
          - apply approval
+    # - destroy_env:
+    #     context: odu_aws
