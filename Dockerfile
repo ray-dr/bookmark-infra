@@ -9,6 +9,5 @@ RUN mvn clean package -DskipTests
 # Package stage
 #
 FROM openjdk:17-slim
-EXPOSE 8080
 COPY --from=maven bookmark-backend/target/*.jar /app.jar
 ENTRYPOINT ["java","-jar","/app.jar"]
